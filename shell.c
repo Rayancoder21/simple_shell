@@ -4,53 +4,93 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stdbool.h>
+
 #define MAX_COMMAND_LENGTH 128
 /**
  * prompt - function
- * main - function
  *
  * Return: nothing
+ *
  */
 void prompt(void)
 {
 	printf("> ");
 	fflush(stdout);
 }
+/**
+ *read_input - function for read
+ *
+ *Return: nothing
+ *
+ */
+char *read_input(void)
+{
+	char *buffer = NULL;
+	size_t bufsize = 0;
+
+	if (getline(&buffer, &bufsize, stdin) == -1)
+	{
+		if (feof(stdin))
+		{
+			printf("\n");
+			exit(EXIT_SUCCESS);
+		}
+		else
+		{
+		perror("Error reading input");
+		exit(EXIT_FAILURE);
+		}
+	}
+	buffer[strcspn(buffer, "\n")] = '\0';
+	return (buffer);
+}
+/**
+ *main - entry point
+ *Description: 'the program's description'
+ *
+ *
+ *Return: nothing
+ */
+
 int main(void)
 {
-	char command[MAX_COMMAND_LENGTH];
+	char *command = NULL;
+	 pid_t child_pid;
+
 
 	while (1)
 	{
 		prompt();
-		if (fgets(command, MAX_COMMAND_LENGTH, stdin) == NULL)
+		command = read_input();
+		if (strcmp(command, "exit") == 0)
 		{
-			if (feof(stdin))
-			{
+			free(command);
 			printf("\n");
 			break;
-	}
-			else
-			{
-				perror("Error reading input");
-				break;
-			}
 		}
-		command[strcspn(command, "\n")] = '\0';
 		if (strlen(command) == 0)
 		{
+		free(command);
 		continue;
 		}
-		if (fork() == 0)
+		child_pid = fork();
+		if (child_pid == 0)
 		{
-			if (execlp(command, command, NULL) == -1)
-			{
-				perror("Failed to execute command");
-				exit(EXIT_FAILURE);
-			}
+			execve(command, &command, environ);
+			perror("Failed to execute command");
+			exit(EXIT_FAILURE);
+		}
+		else if (child_pid > 0)
+		{
+		wait(NULL);
+		free(command);
 		}
 		else
-			wait(NULL);
+		{
+		perror("Error while forking");
+		exit(EXIT_FAILURE);
+		}
 	}
-	return (0);
+	return (EXIT_SUCCESS);
 }
